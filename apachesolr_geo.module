@@ -1,3 +1,8 @@
+<?php
 
+/**
+ * Implement hook_apachesolr_field_mappings()
+ */
 function apachesolr_geo_apachesolr_field_mappings() {
+  
 }
