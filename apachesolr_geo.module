@@ -3,6 +3,50 @@
 /**
  * Implement hook_apachesolr_field_mappings()
  */
-function apachesolr_geo_apachesolr_field_mappings() {
-  
+function apachesolr_geo_apachesolr_field_mappings_alter(&$mappings, $entity_type) {
+  // Stomp on broken geofield implementation.
+  $mappings['geofield']['indexing_callback'] = 'apachesolr_geo_geofield_indexing_callback';
+  $mappings['geofield']['query types'] = array('fixed_geo_distance', 'geo_range');
+  $mappings['geofield']['index_type'] = 'location';
+  $mappings['geofield']['query types'] = array('fixed_geo_distance', 'geo_range');
+
+}
+
+
+/**
+ * Callback that converts list module field into an array
+ * For every multivalued value we also add a single value to be able to
+ * use the stats
+ */
+function apachesolr_geo_geofield_indexing_callback($entity, $field_name, $index_key, $field_info) {
+  $fields = array();
+  $numeric = TRUE;
+  if (!empty($entity->{$field_name})) {
+    $field = $entity->$field_name;
+    list($lang, $values) = each($field);
+
+    for ($i = 0; $i < count($values); $i++) {
+      $fields[] = array(
+        'key' => $index_key,
+        'value' => apachesolr_geo_geofield_latlon($values[$i]),
+      );
+
+      // Only store the first value of the field in a singular index
+      if ($i == 0) {
+        $singular_field_info = $field_info;
+        $singular_field_info['multiple'] = FALSE;
+        $single_key = apachesolr_index_key($singular_field_info);
+        $fields[] = array(
+          'key' => $single_key,
+          'value' => apachesolr_geo_geofield_latlon($values[$i]),
+        );
+      }
+    }
+  }
+  drupal_set_message(print_r($fields,1));
+  return $fields;
+}
+
+function apachesolr_geo_geofield_latlon($value) {
+  return $value['lat'] . ',' . $value['lon'];
 }
