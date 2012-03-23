@@ -8,8 +8,6 @@ function apachesolr_geo_apachesolr_field_mappings_alter(&$mappings, $entity_type
   $mappings['geofield']['indexing_callback'] = 'apachesolr_geo_geofield_indexing_callback';
   $mappings['geofield']['query types'] = array('fixed_geo_distance', 'geo_range');
   $mappings['geofield']['index_type'] = 'location';
-  $mappings['geofield']['query types'] = array('fixed_geo_distance', 'geo_range');
-
 }
 
 
