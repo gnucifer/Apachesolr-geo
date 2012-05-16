@@ -1,15 +1,22 @@
 <?php
 
+// Center point is Denver.
+define('APACHESOLR_GEO_SEARCH_CENTER_POINT', '39.7391667,-104.9841667');
+define('APACHESOLR_GEO_FACET_OPTIONS', '0.5,0.1,0.01');
+define('APACHESOLR_GEO_DEFAULT_RADIUS', 100);
+
 /**
- * Implement hook_apachesolr_field_mappings()
+ * Implements hook_apachesolr_field_mappings_alter().
  */
 function apachesolr_geo_apachesolr_field_mappings_alter(&$mappings, $entity_type) {
-  // Stomp on broken geofield implementation.
+  // Stop on broken geofield implementation.
   $mappings['geofield']['indexing_callback'] = 'apachesolr_geo_geofield_indexing_callback';
-  $mappings['geofield']['query types'] = array('fixed_geo_distance', 'geo_range');
-  $mappings['geofield']['index_type'] = 'location';
-}
+  $mappings['geofield']['query types'] = array('apachesolr_geo');
+  $mappings['geofield']['map callback'] = 'apachesolr_geo_map_callback';
 
+  $mappings['geofield']['index_type'] = 'location';
+
+}
 
 /**
  * Callback that converts list module field into an array
@@ -41,10 +48,38 @@ function apachesolr_geo_geofield_indexing_callback($entity, $field_name, $index_
       }
     }
   }
-  drupal_set_message(print_r($fields,1));
   return $fields;
 }
 
 function apachesolr_geo_geofield_latlon($value) {
   return $value['lat'] . ',' . $value['lon'];
+}
+
+/**
+ * Implements hook_facetapi_query_types().
+ */
+function apachesolr_geo_facetapi_query_types() {
+  return array(
+    'apachesolr_geo' => array(
+      'handler' => array(
+        'class' => 'FacetapiApachesolrGeoQueryType',
+        'adapter' => 'apachesolr',
+      ),
+    ),
+  );
+}
+
+/**
+ * Map of the facet labels.
+ *
+ * @param array $values
+ * @param array $options
+ * @return type
+ */
+function apachesolr_geo_map_callback(array $values, array $options) {
+  $map = array();
+  foreach ($values as $key) {
+    $map[$key] = substr($key, 1) . 'km';
+  }
+  return $map;
 }

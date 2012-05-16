@@ -2,3 +2,5 @@ name = Apachesolr Geo
 description = "Solr geo integration"
 core = 7.x
 package = "Search Toolkit"
+
+files[] = apachesolr_geo_facetapi_query.inc
