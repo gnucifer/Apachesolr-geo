@@ -4,18 +4,116 @@
 define('APACHESOLR_GEO_SEARCH_CENTER_POINT', '39.7391667,-104.9841667');
 define('APACHESOLR_GEO_FACET_OPTIONS', '0.5,0.1,0.01');
 define('APACHESOLR_GEO_DEFAULT_RADIUS', 100);
+define('APACHESOLR_GEO_FACET_MAX_DEPTH', 0);
 
 /**
  * Implements hook_apachesolr_field_mappings_alter().
  */
+/*
 function apachesolr_geo_apachesolr_field_mappings_alter(&$mappings, $entity_type) {
   // Stop on broken geofield implementation.
   $mappings['geofield']['indexing_callback'] = 'apachesolr_geo_geofield_indexing_callback';
   $mappings['geofield']['query types'] = array('apachesolr_geo');
   $mappings['geofield']['map callback'] = 'apachesolr_geo_map_callback';
-
   $mappings['geofield']['index_type'] = 'location';
+}
+ */
 
+function apachesolr_geo_init() {
+  //apachesolr_geo_add_google_maps_js();
+  apachesolr_geo_add_google_places_js();
+  drupal_add_js(drupal_get_path('module',  'apachesolr_geo') . '/apachesolr_geo.js', 'file');
+
+
+}
+
+/**
+ * Implements hook_facetapi_url_processors().
+ */
+// Did not need this after all
+/*
+function apachesolr_geo_facetapi_url_processors() {
+  return array(
+    'apachesolr_geo' => array(
+      'handler' => array(
+        'label' => t('Apache Solr Geo URL processor'),
+        'class' => 'ApachesolrGeoUrlProcessor',
+        'parent' => 'standard',
+        'file' => 'url_processor_apachesolr_geo.inc',
+        'path' => drupal_get_path('module', 'apachesolr_geo') . '/plugins/facetapi',
+      ),
+    ),
+  );
+}
+*/
+
+function apachesolr_geo_facetapi_searcher_info_alter(&$searcher_info) {
+  //TODO: warn if not replacing standard?
+  //TODO: multiple environments? strpos?
+  $searcher_info['apachesolr@solr']['url processor'] = 'apachesolr_geo';
+}
+
+//TODO: fix, why isnt' there a libraries plugin for this!?
+function apachesolr_geo_add_google_maps_js() {
+  //TODO: setting for api key
+  drupal_add_html_head(
+    array(
+      '#type' => 'markup',
+      '#markup' => '<script type="text/javascript" src="http://maps.googleapis.com/maps/api/js?key=AIzaSyBqlnQ29_puUjyV9_udT42aiePgcH3pAMc&sensor=false"></script>',
+    ),
+    'apachesolr_geo_maps'
+  );
+}
+
+//TODO: fix, why isnt' there a libraries plugin for this!?
+function apachesolr_geo_add_google_places_js() {
+  global $language;
+  //TODO: setting for api key
+  drupal_add_html_head(
+    array(
+      '#type' => 'markup',
+      '#markup' => '<script type="text/javascript" src="http://maps.googleapis.com/maps/api/js?libraries=places&sensor=false&key=AIzaSyBqlnQ29_puUjyV9_udT42aiePgcH3pAMc&sensor=false&language=' . $language->language . '"></script>',
+    ),
+    'apachesolr_geo_places'
+  );
+}
+
+
+
+function apachesolr_geo_apachesolr_field_mappings() {
+  return array(
+    'geofield' => array(
+      'indexing_callback' => 'apachesolr_geo_geofield_indexing_callback',
+      'query types' => array('apachesolr_geo'),
+      'allowed operators' => array(FACETAPI_OPERATOR_AND => TRUE),
+      'map callback' => 'apachesolr_geo_map_callback',
+      'facet mincount allowed' => TRUE,
+      'index_type' => 'location',
+      'multiple' => FALSE,
+      'facets' => TRUE,
+    ),
+  );
+}
+
+function apachesolr_geo_menu() {
+  $items = array();
+  $items['apachesolr_geo_location_selector_redirect/%/%facetapi_adapter'] = array(
+    'type' => MENU_CALLBACK,
+    'access arguments' => array('access content'),
+    'page arguments' => array(1, 2),
+    'page callback' => 'apachesolr_geo_location_selector_redirect',
+    'access arguments' => array('access content'),
+  );
+   return $items;
+}
+
+function apachesolr_geo_location_selector_redirect($field_alias, $adapter) {
+  $form_id = 'apachesolr_geo_location_selector_form_' . $field_alias;
+  if ($form = drupal_get_form($form_id, $adapter)) {
+    //What do do if no redirect??
+    return $form;
+  }
+  return MENU_NOT_FOUND;
 }
 
 /**
@@ -29,23 +127,18 @@ function apachesolr_geo_geofield_indexing_callback($entity, $field_name, $index_
   if (!empty($entity->{$field_name})) {
     $field = $entity->$field_name;
     list($lang, $values) = each($field);
+    $value = reset($values);
 
-    for ($i = 0; $i < count($values); $i++) {
-      $fields[] = array(
-        'key' => $index_key,
-        'value' => apachesolr_geo_geofield_latlon($values[$i]),
-      );
-
+    if(!empty($value)) {
       // Only store the first value of the field in a singular index
-      if ($i == 0) {
-        $singular_field_info = $field_info;
-        $singular_field_info['multiple'] = FALSE;
-        $single_key = apachesolr_index_key($singular_field_info);
-        $fields[] = array(
-          'key' => $single_key,
-          'value' => apachesolr_geo_geofield_latlon($values[$i]),
-        );
-      }
+      $singular_field_info = $field_info;
+      $singular_field_info['multiple'] = FALSE;
+      $single_key = apachesolr_index_key($singular_field_info);
+
+      $fields[] = array(
+        'key' => $single_key,
+        'value' => apachesolr_geo_geofield_latlon($value),
+      );
     }
   }
   return $fields;
@@ -62,9 +155,151 @@ function apachesolr_geo_facetapi_query_types() {
   return array(
     'apachesolr_geo' => array(
       'handler' => array(
+        'label' => t('Apache Solr geospatial query'),
         'class' => 'FacetapiApachesolrGeoQueryType',
         'adapter' => 'apachesolr',
       ),
+    ),
+  );
+}
+
+/**
+ * Implements hook_facetapi_widgets().
+ */
+function apachesolr_geo_facetapi_widgets() {
+  return array(
+    'apachesolr_geo_links' => array(
+      'handler' => array(
+        'label' => t('Apache Solr geospatial links'),
+        'class' => 'FacetapiGeoWidgetLinks',
+        'parent' => 'FacetapiWidgetLinks',
+        'query types' => array('apachesolr_geo'),
+      ),
+    ),
+    //TODO: verify that this works
+    'apachesolr_geo_checkbox_links' => array(
+      'handler' => array(
+        'label' => t('Apache Solr geospatial links with checkboxes'),
+        'class' => 'FacetapiGeoWidgetCheckboxLinks',
+        'parent' => 'FacetapiGeoWidgetLinks',
+        'query types' => array('apachesolr_geo'),
+      ),
+    ),
+  );
+}
+
+/**
+ * Implements hook_forms().
+ */
+function apachesolr_geo_forms($form_id, $args) {
+  $forms = array();
+  $form_prefix = 'apachesolr_geo_location_selector_form_';
+  if(strpos($form_id, 'apachesolr_geo_location_selector_form_') === 0) {
+    $field_alias = str_replace($form_prefix, '', $form_id);
+    array_unshift($args, $field_alias);
+    $forms[$form_id] = array(
+      'callback' => 'apachesolr_geo_location_selector_form',
+      'callback arguments' => $args,
+    );
+  }
+  return $forms;
+}
+
+
+function apachesolr_geo_location_selector_form($form, &$form_state, $field_alias, $adapter) {
+
+  $url_processor = $adapter->getUrlProcessor();
+  $params = $url_processor->getParams();
+
+  $setting = array(
+    'apachesolr_geo' => array(
+      'location_select_forms' => array(
+        str_replace('_', '-', $field_alias),
+      ),
+    ),
+  );
+
+  //TODO: add powered by google
+  $form['location_selector'] = array(
+    '#type' => 'textfield',
+    //'#title' => t('Select location'),
+    //'#description' => t('TODO'),
+    '#attributes' => array(
+      'class' => array('location-selector'),
+    ),
+    '#attached' => array(
+      'js' => array(
+        drupal_get_path('module', 'apachesolr_geo') . '/apachesolr_geo_gmaps_location.js',
+        array('data' => $setting, 'type' => 'setting'),
+      ),
+    ),
+    //'#default_value' => 'TODO',
+  );
+
+  $form['lat'] = array(
+    '#attributes' => array(
+      'class' => array('lat'),
+    ),
+    '#type' => 'hidden',
+    '#default_value' => 'nil',
+  );
+
+  $form['lng'] = array(
+    '#attributes' => array(
+      'class' => array('lng'),
+    ),
+    '#type' => 'hidden',
+    '#default_value' => 'nil',
+  );
+
+  $form['query'] = array(
+    '#type' => 'hidden',
+    '#default_value' => drupal_json_encode($params),
+  );
+
+  $form['path'] = array(
+    '#type' => 'hidden',
+    '#default_value' => current_path(),
+  );
+
+  $form['submit'] = array(
+    '#type' => 'submit',
+    '#value' => t('Submit'),
+  );
+  $form['#field_alias'] = $field_alias;
+  $form['#adapter'] = $adapter;
+  $form['#action'] = $form['#action'] = url('apachesolr_geo_location_selector_redirect/' . $field_alias . '/' . $adapter->getSearcher());
+  $form['#submit'] = array('apachesolr_geo_location_selector_form_submit');
+  return $form;
+}
+
+function apachesolr_geo_location_selector_form_submit($form, &$form_state) {
+  $url_processor = $form['#adapter']->getUrlProcessor();
+  $filter_key = $url_processor->getFilterKey();
+  $geofield_alias = $form['#field_alias'];
+  $query_string = (array) drupal_json_decode($form_state['values']['query']);
+  if (empty($query_string[$filter_key])) {
+    $query_string[$filter_key] = array();
+  }
+  // Remove any existing filters for pt field
+  foreach (array_keys($query_string[$filter_key]) as $i) {
+    if (strpos($query_string[$filter_key][$i], $geofield_alias) === 0) {
+      unset($query_string[$filter_key][$i]);
+    }
+  }
+  $geofield_alias_pt = $geofield_alias . ':pt.';
+  $query_string[$filter_key][] = $geofield_alias_pt . "{$form_state['values']['lat']},{$form_state['values']['lng']}:{$form_state['values']['location_selector']}";
+  $form_state['redirect'] = array($form_state['values']['path'], array('query' => $query_string));
+}
+
+//TODO: template file?
+function theme_widget_geo_links(&$element) {
+}
+
+function apachesolr_geo_theme($existing, $type, $theme, $path) { 
+  return array(
+    'widget_geo_links' => array(
+      'render element' => 'element',
     ),
   );
 }
@@ -78,8 +313,47 @@ function apachesolr_geo_facetapi_query_types() {
  */
 function apachesolr_geo_map_callback(array $values, array $options) {
   $map = array();
+  global $language;
   foreach ($values as $key) {
-    $map[$key] = substr($key, 1) . 'km';
+    list($type, $value) = explode('.', $key, 2);
+    //TODO: theme function?
+    //TODO: use contants?
+    if($type === 'd') {
+      $value = floatval($value);
+
+      //round to meters, should provide setting for this, meters_threshold
+      //TODO: setting for rounding decimals? Right now hard coded to 1
+      //Special case for scandinavian miles
+      if(
+        !(
+          $language->language == 'sv' ||
+          $language->language == 'nn' || //Norwegian nynorsk
+          $language->language == 'nb' //Norwegian bokmal
+        ) ||
+        $value < 10
+      ) {
+        if($value < 1) {
+          $map[$key] = t('within !m m', array('!m' => strval(round($value * 1000, 1))));
+        }
+        else { 
+          $map[$key] = t('within !km km', array('!km' => strval(round($value, 1))));
+        }
+      }
+      else {
+        //scandinavian miles
+        //TODO: translation should perhaps be provided with module
+        //format_plural don't work for floats
+        $miles = round($value / 10, 1);
+        $args = array('!miles' => strval($miles));
+        //TODO: format decimal according to number, requre numberapisomething module?
+        $map[$key] = $miles < 2 ? t('within !miles mile', $args) :  t('within !miles miles', $args);
+      }
+    }
+    else {
+      //TODO: this code more or less duplicate from query extract
+      list(, $place) = explode(':', $value);
+      $map[$key] = $place;
+    }
   }
   return $map;
 }
