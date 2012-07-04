@@ -176,7 +176,8 @@ function apachesolr_geo_facetapi_widgets() {
         'query types' => array('apachesolr_geo'),
       ),
     ),
-    //TODO: verify that this works
+    //TODO: verify that this works, (it doesn't)
+    /*
     'apachesolr_geo_checkbox_links' => array(
       'handler' => array(
         'label' => t('Apache Solr geospatial links with checkboxes'),
@@ -185,6 +186,7 @@ function apachesolr_geo_facetapi_widgets() {
         'query types' => array('apachesolr_geo'),
       ),
     ),
+    */
   );
 }
 
@@ -211,6 +213,7 @@ function apachesolr_geo_location_selector_form($form, &$form_state, $field_alias
   $url_processor = $adapter->getUrlProcessor();
   $params = $url_processor->getParams();
 
+  /*
   $setting = array(
     'apachesolr_geo' => array(
       'location_select_forms' => array(
@@ -218,6 +221,9 @@ function apachesolr_geo_location_selector_form($form, &$form_state, $field_alias
       ),
     ),
   );
+  */
+
+  $form['#attributes']['class'] = array('apachesolr-geo-location-selector');
 
   //TODO: add powered by google
   $form['location_selector'] = array(
@@ -230,7 +236,7 @@ function apachesolr_geo_location_selector_form($form, &$form_state, $field_alias
     '#attached' => array(
       'js' => array(
         drupal_get_path('module', 'apachesolr_geo') . '/apachesolr_geo_gmaps_location.js',
-        array('data' => $setting, 'type' => 'setting'),
+        //array('data' => $setting, 'type' => 'setting'),
       ),
     ),
     //'#default_value' => 'TODO',

@@ -1,14 +1,22 @@
 (function ($, maps) {
 Drupal.behaviors.apachesolr_geo_gmaps_location = {
   attach: function(context, settings) {
+    var i;
+    var facet;
+    for(i in Drupal.settings.facetapi.facets) {
+      facet = Drupal.settings.facetapi.facets[i];
+      if(facet.widget == 'apachesolr_geo_links') {
+        var $facet = $('#' + facet.id, context);
+        var $form = $('.apachesolr-geo-location-selector', $facet);
 
-    if(typeof settings.apachesolr_geo !== 'undefined') {
-      var form_suffixes = settings.apachesolr_geo.location_select_forms;
-      for(i in form_suffixes) {
-        //TODO: many forms on one page?? In that case we need settings for this
-        var $form = $('#apachesolr-geo-location-selector-form-' + form_suffixes[i], context);
         $('.form-submit', $form).hide();
         var $input = $('.location-selector', $form);
+
+        //TODO: Perhaps option for this
+
+        if('autocomplete_placeholder_text' in facet) {
+          $input.attr('placeholder', facet.autocomplete_placeholder_text);
+        }
 
         if($input.length) {
           var autocomplete = new maps.places.Autocomplete($input[0], {
@@ -33,7 +41,17 @@ Drupal.behaviors.apachesolr_geo_gmaps_location = {
               }
             }
           );
-        }   
+        }
+      }
+    }
+
+    /*
+    if(typeof settings.apachesolr_geo !== 'undefined') {
+      var form_suffixes = settings.apachesolr_geo.location_select_forms;
+      for(i in form_suffixes) {
+        //TODO: many forms on one page?? In that case we need settings for this
+        var $form = $('#apachesolr-geo-location-selector-form-' + form_suffixes[i], context);
+       }   
       }
     }
     /*

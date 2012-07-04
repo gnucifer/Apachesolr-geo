@@ -78,6 +78,11 @@ class FacetapiGeoWidgetLinks extends FacetapiWidgetLinks {
     $element['center_point_selector'] = drupal_get_form('apachesolr_geo_location_selector_form_' . $this->facet['field alias'], $this->facet->getAdapter());
     $element['center_point_selector']['#weight'] = -1;
 
+    if($this->settings->settings['autocomplete_placeholder_text']) {
+      //TODO: does facetapi support multilingual variables? Look it up
+      $this->jsSettings['autocomplete_placeholder_text'] = $this->settings->settings['autocomplete_placeholder_text'];
+    }
+
     /*
     if(isset($elements_by_type['pt'])) {
       $location_element = end($elements_by_type['pt']);
@@ -93,7 +98,6 @@ class FacetapiGeoWidgetLinks extends FacetapiWidgetLinks {
       );
     }
     */
-
   }
 
   protected function getElementsByType($element) {
@@ -108,7 +112,22 @@ class FacetapiGeoWidgetLinks extends FacetapiWidgetLinks {
 
   function settingsForm(&$form, &$form_state) {
     parent::settingsForm($form, $form_state);
+    $form['widget']['widget_settings']['links'][$this->id]['autocomplete_placeholder_text'] = array(
+      '#title' => t('Autocompleting location selector placeholder text'),
+      '#type' => 'textfield',
+      '#default_value' => isset($this->settings->settings['autocomplete_placeholder_text']) ? $this->settings->settings['autocomplete_placeholder_text'] : '',
+    );
   }
+
+ /**
+   * Returns defaults for the settings this widget provides.
+  */
+  function getDefaultSettings() {
+    return parent::getDefaultSettings() + array(
+      'autocomplete_placeholder_text' => ''
+    );
+  }
+
 
 }
 
