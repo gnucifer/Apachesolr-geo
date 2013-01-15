@@ -23,9 +23,29 @@ function apachesolr_geo_init() {
   //apachesolr_geo_add_google_maps_js();
   apachesolr_geo_add_google_places_js();
   drupal_add_js(drupal_get_path('module',  'apachesolr_geo') . '/apachesolr_geo.js', 'file');
-
-
 }
+//TODO: rename
+
+function apachesolr_geo_language_country($lang) {
+  $mapping = module_invoke_all('apachesolr_geo_language_country') + array(
+    'sv' => 'se',
+    'nn' => 'no',
+    'nb' => 'no',
+    'fi' => 'fi',
+  );
+  return isset($mapping[$lang]) ? $mapping[$lang] : FALSE;
+}
+
+/*
+function apachesolr_geo_apachesolr_geo_language_country() {
+  return array(
+    'sv' => 'se',
+    'nn' => 'no',
+    'nb' => 'no',
+    'fi' => 'fi',
+  );
+}
+*/
 
 /**
  * Implements hook_facetapi_url_processors().

@@ -80,7 +80,12 @@ class FacetapiGeoWidgetLinks extends FacetapiWidgetLinks {
 
     if($this->settings->settings['autocomplete_placeholder_text']) {
       //TODO: does facetapi support multilingual variables? Look it up
-      $this->jsSettings['autocomplete_placeholder_text'] = $this->settings->settings['autocomplete_placeholder_text'];
+      global $language;
+      if($country = apachesolr_geo_language_country($language->language)) {
+        $this->jsSettings['country_restriction'] = $country;
+      }
+      //How fix better i18n support, perhaps this is not good practice since translation will break if changing original etc?
+      $this->jsSettings['autocomplete_placeholder_text'] = t($this->settings->settings['autocomplete_placeholder_text']);
     }
 
     /*

@@ -19,11 +19,23 @@ Drupal.behaviors.apachesolr_geo_gmaps_location = {
         }
 
         if($input.length) {
-          var autocomplete = new maps.places.Autocomplete($input[0], {
-              types : ['geocode'],
-              componentRestrictions : {country : 'se'}
-            }
-          );
+          var autocomplete_options = {
+              types : ['geocode']
+          };
+
+          if('country_restriction' in facet) {
+            autocomplete_options.componentRestrictions = {
+              country : facet.country_restriction
+            };
+          }
+          /*
+          if(typeof console !== 'undefined') {
+            console.dir(autocomplete_options);
+            console.dir(facet);
+          }
+          */
+
+          var autocomplete = new maps.places.Autocomplete($input[0], autocomplete_options);
           maps.event.addListener(autocomplete, 'place_changed', function() {
               var place = autocomplete.getPlace();
               if(typeof place.geometry !== 'undefined') {

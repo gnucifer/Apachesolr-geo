@@ -73,6 +73,23 @@ class FacetapiApachesolrGeoQueryType extends FacetapiQueryType implements Faceta
     }
     if(isset($central_point)) {
 
+      //TODO: send back like this since query has no jsSettings(?)
+      //Useful for google directions api etc
+      list($lat, $lng) = explode(',', $central_point);
+      drupal_add_js(
+        array(
+          'apachesolr_geo' => array(
+            'central_point' => array(
+              $field_name => array(
+                'lat' => $lat,
+                'lng' => $lng,
+              )
+            )
+          )
+        ),
+        'setting'
+      );
+
       $query->setAvailableSort('geodist()', array('title' => t('Distance'), 'default' => 'asc'));
 
       if(empty($_GET['solrsort'])) {
@@ -158,7 +175,6 @@ class FacetapiApachesolrGeoQueryType extends FacetapiQueryType implements Faceta
       '#default_value' => isset($settings['apachesolr_geo_facet_max_depth']) ? $settings['apachesolr_geo_facet_max_depth'] : APACHESOLR_GEO_FACET_MAX_DEPTH,
     );
 
- 
     //TODO: option for facet item distribution
 
 /*
